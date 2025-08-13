@@ -84,6 +84,37 @@ sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &l
     return cloud_msg;
 }
 
+livox_ros_driver::msg::CustomMsg pc2livox(const sensor_msgs::msg::PointCloud2 &cloud_msg)
+{
+    livox_ros_driver::msg::CustomMsg livox_msg;
+    livox_msg.header = cloud_msg.header;
+    livox_msg.points.resize(cloud_msg.width);
+
+    sensor_msgs::PointCloud2ConstIterator<uint32_t> iter_offset_time(cloud_msg, "offset_time");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud_msg, "x");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud_msg, "y");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud_msg, "z");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_intensity(cloud_msg, "intensity");
+
+    for (auto &livox_p : livox_msg.points) {
+        livox_p.offset_time = *iter_offset_time;
+        livox_p.x = *iter_x;
+        livox_p.y = *iter_y;
+        livox_p.z = *iter_z;
+        livox_p.reflectivity = *iter_intensity;
+        livox_p.tag = 0;
+        livox_p.line = 0;
+
+        ++iter_offset_time;
+        ++iter_x;
+        ++iter_y;
+        ++iter_z;
+        ++iter_intensity;
+    }
+
+    return livox_msg;
+}
+
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);

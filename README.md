@@ -12,6 +12,8 @@
 
 ```bash
 ros2 launch livox2pc livox2pc_launch.py rosbag_path:=dataset/Retail_Street
+
+ros2 launch livox2pc imu2livox_launch.py
 ```
 
 ## Reference
