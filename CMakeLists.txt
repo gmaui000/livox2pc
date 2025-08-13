@@ -3,6 +3,7 @@ project(livox2pc)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 find_package(ament_cmake REQUIRED)
 find_package(livox_ros_driver REQUIRED)
@@ -13,24 +14,65 @@ find_package(Protobuf REQUIRED)
 
 include(FindProtobuf)
 
+
+# ---------------------------
 # Proto 输出目录
-set(PROTO_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
-file(MAKE_DIRECTORY ${PROTO_OUT_DIR})
+# ---------------------------
+set(PROTO_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
+# ---------------------------
 # 查找所有 proto 文件
-file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/primitive/sensor/*.proto")
-
-# 自动生成 C++ 源码
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-    ${PROTO_FILES}
-    PROTOC_OUT_DIR ${PROTO_OUT_DIR}
-    PROTOC_OPTIONS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}
+# ---------------------------
+file(GLOB_RECURSE PROTO_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/foxglove/*.proto"
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/primitive/sensor/*.proto"
 )
+
+# ---------------------------
+# 自动生成 C++ 源码，保持目录结构
+# ---------------------------
+set(PROTO_SRCS)
+set(PROTO_HDRS)
+
+foreach(PROTO_FILE ${PROTO_FILES})
+    # 计算 proto 文件相对于 proto 根目录的相对路径
+    # 假设 proto 根目录是 protocol/
+    file(RELATIVE_PATH REL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/protocol ${PROTO_FILE})
+    get_filename_component(REL_DIR ${REL_PATH} DIRECTORY)
+    get_filename_component(BASE_NAME ${PROTO_FILE} NAME_WE)
+
+    # 创建对应的输出子目录
+    set(OUT_DIR ${PROTO_OUT_DIR}/${REL_DIR})
+    file(MAKE_DIRECTORY ${OUT_DIR})
+
+    # 输出的 pb 文件路径
+    set(OUT_CPP ${OUT_DIR}/${BASE_NAME}.pb.cc)
+    set(OUT_H   ${OUT_DIR}/${BASE_NAME}.pb.h)
+
+    add_custom_command(
+        OUTPUT ${OUT_CPP} ${OUT_H}
+        COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+            -I${CMAKE_CURRENT_SOURCE_DIR}/protocol
+            -I${CMAKE_CURRENT_SOURCE_DIR}/protocol/primitive/sensor
+            --cpp_out=${PROTO_OUT_DIR}
+            ${PROTO_FILE}
+        DEPENDS ${PROTO_FILE}
+        COMMENT "Generating C++ from ${PROTO_FILE}"
+        VERBATIM
+    )
+
+    list(APPEND PROTO_SRCS ${OUT_CPP})
+    list(APPEND PROTO_HDRS ${OUT_H})
+endforeach()
+
+# 生成一个静态库 target，方便 link
+add_library(proto_lib ${PROTO_SRCS} ${PROTO_HDRS})
+target_include_directories(proto_lib PUBLIC ${PROTO_OUT_DIR})
+target_link_libraries(proto_lib PUBLIC ${Protobuf_LIBRARIES})
 
 # imu_converter
 add_executable(imu_converter src/imu2livox.cpp ${PROTO_SRCS})
-target_include_directories(imu_converter PRIVATE ${PROTO_OUT_DIR})
-target_link_libraries(imu_converter ${Protobuf_LIBRARIES})
+target_link_libraries(imu_converter proto_lib)
 ament_target_dependencies(imu_converter
   rclcpp
   sensor_msgs

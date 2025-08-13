@@ -1,5 +1,5 @@
 syntax = "proto3";
-package primitive.sensor;
+package asp_sensor;
 
 message Point32 {
   float x = 1;

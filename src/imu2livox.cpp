@@ -1,7 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/byte_multi_array.hpp"
-#include "sensor_msgs.pb.h"
+#include "primitive/sensor/sensor_msgs.pb.h"
 
 using namespace std::chrono_literals;
 
@@ -12,7 +12,7 @@ public:
     proto_imu_sub_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
       "/imu", 10,
       [this](const std_msgs::msg::ByteMultiArray::SharedPtr msg) {
-        primitive::sensor::Imu proto_msg;
+        asp_sensor::Imu proto_msg;
         if (proto_msg.ParseFromArray(msg->data.data(), msg->data.size())) {
           auto std_imu = convertToStandardImu(proto_msg);
           std_imu_pub_->publish(std_imu);
@@ -25,13 +25,13 @@ public:
   }
 
 private:
-  bool parseProtoFromROS(const sensor_msgs::msg::Imu& ros_msg, primitive::sensor::Imu& proto_msg) {
+  bool parseProtoFromROS(const sensor_msgs::msg::Imu& ros_msg, asp_sensor::Imu& proto_msg) {
     // Parse ROS message to proto (if needed)
     // This would be custom parsing logic
     return true;
   }
 
-  sensor_msgs::msg::Imu convertToStandardImu(const primitive::sensor::Imu& proto_msg) {
+  sensor_msgs::msg::Imu convertToStandardImu(const asp_sensor::Imu& proto_msg) {
     auto std_imu = sensor_msgs::msg::Imu();
     
     // Convert header

@@ -1,7 +1,7 @@
 syntax = "proto3";
-package primitive.sensor;
+package asp_sensor;
 
-import "builtin_interfaces.proto";
+import "primitive/sensor/builtin_interfaces.proto";
 
 message Header {
   Time stamp = 1;
