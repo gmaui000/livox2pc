@@ -1,7 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/byte_multi_array.hpp"
-#include "primitive/sensor/sensor_msgs.pb.h"
+#include "sensor_msgs.pb.h"
 
 using namespace std::chrono_literals;
 
@@ -10,7 +10,7 @@ public:
   ImuConverter() : Node("imu_converter") {
     // Create subscriber for raw protobuf data
     proto_imu_sub_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
-      "/livox/imu", 10,
+      "/imu", 10,
       [this](const std_msgs::msg::ByteMultiArray::SharedPtr msg) {
         primitive::sensor::Imu proto_msg;
         if (proto_msg.ParseFromArray(msg->data.data(), msg->data.size())) {
@@ -21,7 +21,7 @@ public:
         }
       });
       
-    std_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/imu", 10);
+    std_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/livox/imu", 10);
   }
 
 private:

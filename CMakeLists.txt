@@ -11,42 +11,34 @@ find_package(sensor_msgs REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(Protobuf REQUIRED)
 
-# Set proto output directory
-set(PROTO_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/primitive/sensor)
+include(FindProtobuf)
+
+# Proto 输出目录
+set(PROTO_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${PROTO_OUT_DIR})
 
-# Generate protobuf sources
-file(GLOB PROTO_FILES "primitive/sensor/*.proto")
+# 查找所有 proto 文件
+file(GLOB PROTO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/primitive/sensor/*.proto")
 
-foreach(PROTO_FILE ${PROTO_FILES})
-  get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
-  set(PB_CC ${PROTO_OUT_DIR}/${PROTO_NAME}.pb.cc)
-  set(PB_H ${PROTO_OUT_DIR}/${PROTO_NAME}.pb.h)
-
-  add_custom_command(
-    OUTPUT ${PB_CC} ${PB_H}
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-    ARGS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}
-         --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-         ${PROTO_FILE}
-    DEPENDS ${PROTO_FILE}
-    COMMENT "Generating ${PROTO_NAME} protobuf sources"
-  )
-  
-  list(APPEND PROTO_SRCS ${PB_CC})
-  list(APPEND PROTO_HDRS ${PB_H})
-endforeach()
-
-# Create custom target to ensure proper build order
-add_custom_target(generate_protos DEPENDS ${PROTO_SRCS} ${PROTO_HDRS})
-# Add generated sources to imu_converter target
-add_executable(imu_converter src/imu2livox.cpp ${PROTO_SRCS} ${PROTO_HDRS})
-target_link_libraries(imu_converter ${Protobuf_LIBRARIES})
-target_include_directories(imu_converter PRIVATE
-  ${CMAKE_CURRENT_BINARY_DIR}
-  ${PROTO_OUT_DIR}
+# 自动生成 C++ 源码
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+    ${PROTO_FILES}
+    PROTOC_OUT_DIR ${PROTO_OUT_DIR}
+    PROTOC_OPTIONS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# imu_converter
+add_executable(imu_converter src/imu2livox.cpp ${PROTO_SRCS})
+target_include_directories(imu_converter PRIVATE ${PROTO_OUT_DIR})
+target_link_libraries(imu_converter ${Protobuf_LIBRARIES})
+ament_target_dependencies(imu_converter
+  rclcpp
+  sensor_msgs
+  livox_ros_driver
+)
+target_compile_options(imu_converter PRIVATE -Wall)
+
+# livox2pc
 add_executable(${PROJECT_NAME} src/livox2pc.cpp)
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
@@ -54,21 +46,14 @@ ament_target_dependencies(${PROJECT_NAME}
   rosbag2_cpp
   livox_ros_driver
 )
-ament_target_dependencies(imu_converter
-  rclcpp
-  sensor_msgs
-  livox_ros_driver
-)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
-target_compile_options(imu_converter PRIVATE -Wall)
 
 install(TARGETS ${PROJECT_NAME} imu_converter
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
 )
 
 ament_package()

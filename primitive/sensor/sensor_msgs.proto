@@ -1,8 +1,8 @@
 syntax = "proto3";
 package primitive.sensor;
 
-import "primitive/sensor/std_msgs.proto";
-import "primitive/sensor/geometry_msgs.proto";
+import "std_msgs.proto";
+import "geometry_msgs.proto";
 
 option go_package = "primitive/sensor";
 
