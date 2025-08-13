@@ -62,15 +62,15 @@ sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &l
     // sensor_msgs::PointCloud2Iterator<uint8_t> iter_tag(cloud_msg, "tag");
     // sensor_msgs::PointCloud2Iterator<uint8_t> iter_line(cloud_msg, "line");
 
-    for (const auto &livox_p : livox_msg.points)
+    for (const auto &p : livox_msg.points)
     {
-        *iter_offset_time = livox_p.offset_time;
-        *iter_x = livox_p.x;
-        *iter_y = livox_p.y;
-        *iter_z = livox_p.z;
-        *iter_intensity = livox_p.reflectivity;
-        // *iter_tag = livox_p.tag;
-        // *iter_line = livox_p.line;
+        *iter_offset_time = p.offset_time;
+        *iter_x = p.x;
+        *iter_y = p.y;
+        *iter_z = p.z;
+        *iter_intensity = p.reflectivity;
+        // *iter_tag = p.tag;
+        // *iter_line = p.line;
 
         ++iter_offset_time;
         ++iter_x;
