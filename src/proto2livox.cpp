@@ -122,6 +122,7 @@ private:
     const auto& fields = proto_msg.fields();
     const auto& data = proto_msg.data();
     const size_t point_count = data.size() / proto_msg.point_stride();
+    msg.point_num = point_count;
     msg.points.resize(point_count);
 
     // Create field offset map
