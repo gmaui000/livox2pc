@@ -11,9 +11,9 @@
 ### Usage
 
 ```bash
-ros2 launch livox2pc livox2pc_launch.py rosbag_path:=dataset/Retail_Street
+ros2 launch livox2pc livox2std_launch.py rosbag_path:=dataset/Retail_Street
 
-ros2 launch livox2pc imu2livox_launch.py
+ros2 launch livox2pc proto2livox_launch.py output_format:=std
 ```
 
 ## Reference

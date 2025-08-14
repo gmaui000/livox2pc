@@ -18,10 +18,10 @@ def generate_launch_description():
     )
     
     # 启动livox2pc节点
-    livox2pc = Node(
+    livox2std = Node(
         package='livox2pc',
-        executable='livox2pc',  # 确保ROS 2版本的可执行文件名称正确
-        name='livox2pc',
+        executable='livox2std',  # 确保ROS 2版本的可执行文件名称正确
+        name='livox2std',
         output='screen',
         parameters=[{
             'livox_topic': LaunchConfiguration('livox_topic'),
@@ -37,5 +37,5 @@ def generate_launch_description():
     return LaunchDescription([
         livox_topic,
         rosbag_path,
-        livox2pc
+        livox2std
     ])

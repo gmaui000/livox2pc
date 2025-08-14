@@ -70,27 +70,27 @@ add_library(proto_lib ${PROTO_SRCS} ${PROTO_HDRS})
 target_include_directories(proto_lib PUBLIC ${PROTO_OUT_DIR})
 target_link_libraries(proto_lib PUBLIC ${Protobuf_LIBRARIES})
 
-# imu_converter
-add_executable(imu_converter src/imu2livox.cpp ${PROTO_SRCS})
-target_link_libraries(imu_converter proto_lib)
-ament_target_dependencies(imu_converter
+# proto2livox
+add_executable(proto2livox src/proto2livox.cpp ${PROTO_SRCS})
+target_link_libraries(proto2livox proto_lib)
+ament_target_dependencies(proto2livox
   rclcpp
   sensor_msgs
   livox_ros_driver
 )
-target_compile_options(imu_converter PRIVATE -Wall)
+target_compile_options(proto2livox PRIVATE -Wall)
 
-# livox2pc
-add_executable(${PROJECT_NAME} src/livox2pc.cpp)
-ament_target_dependencies(${PROJECT_NAME}
+# livox2std
+add_executable(livox2std src/livox2std.cpp)
+ament_target_dependencies(livox2std
   rclcpp
   sensor_msgs
   rosbag2_cpp
   livox_ros_driver
 )
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
+target_compile_options(livox2std PRIVATE -Wall)
 
-install(TARGETS ${PROJECT_NAME} imu_converter
+install(TARGETS livox2std proto2livox
   DESTINATION lib/${PROJECT_NAME}
 )
 
