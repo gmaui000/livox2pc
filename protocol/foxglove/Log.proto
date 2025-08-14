@@ -2,7 +2,7 @@
 
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+import "protobuf/timestamp.proto";
 
 package foxglove;
 
@@ -29,7 +29,7 @@ message Log {
     FATAL = 5;
   }
   // Timestamp of log message
-  google.protobuf.Timestamp timestamp = 1;
+  protobuf.Timestamp timestamp = 1;
 
   // Log level
   Level level = 2;

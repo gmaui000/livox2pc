@@ -2,14 +2,14 @@
 
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+import "protobuf/timestamp.proto";
 
 package foxglove;
 
 // A single frame of a compressed video bitstream
 message CompressedVideo {
   // Timestamp of video frame
-  google.protobuf.Timestamp timestamp = 1;
+  protobuf.Timestamp timestamp = 1;
 
   // Frame of reference for the video.
   // 

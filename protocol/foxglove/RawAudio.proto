@@ -2,14 +2,14 @@
 
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+import "protobuf/timestamp.proto";
 
 package foxglove;
 
 // A single block of an audio bitstream
 message RawAudio {
   // Timestamp of the start of the audio block
-  google.protobuf.Timestamp timestamp = 1;
+  protobuf.Timestamp timestamp = 1;
 
   // Audio data. The samples in the data must be interleaved and little-endian
   bytes data = 2;

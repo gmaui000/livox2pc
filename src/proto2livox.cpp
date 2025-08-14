@@ -9,6 +9,7 @@
 #include <variant>
 
 using namespace std::chrono_literals;
+using sensor_msgs::msg::PointField;
 
 class Proto2LivoxConverter : public rclcpp::Node {
 public:
@@ -176,7 +177,8 @@ private:
   sensor_msgs::msg::PointCloud2 convertToStandardLidar(const foxglove::PointCloud& proto_msg) {
     auto msg = sensor_msgs::msg::PointCloud2();
     msg.header.stamp = rclcpp::Time(proto_msg.timestamp().seconds(), proto_msg.timestamp().nanos());
-    msg.header.frame_id = proto_msg.frame_id();
+    // msg.header.frame_id = proto_msg.frame_id();
+    msg.header.frame_id = "proto_frame";
     msg.height = 1;
     msg.width = proto_msg.data().size() / proto_msg.point_stride();
 
@@ -184,40 +186,40 @@ private:
     msg.fields.resize(7);
     msg.fields[0].name = "x";
     msg.fields[0].offset = 0;
-    msg.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
+    msg.fields[0].datatype = PointField::FLOAT32;
     msg.fields[0].count = 1;
 
     msg.fields[1].name = "y";
     msg.fields[1].offset = 4;
-    msg.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
+    msg.fields[1].datatype = PointField::FLOAT32;
     msg.fields[1].count = 1;
 
     msg.fields[2].name = "z";
     msg.fields[2].offset = 8;
-    msg.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
+    msg.fields[2].datatype = PointField::FLOAT32;
     msg.fields[2].count = 1;
 
     msg.fields[2].name = "ring";
     msg.fields[2].offset = 12;
-    msg.fields[2].datatype = sensor_msgs::msg::PointField::UINT16;
+    msg.fields[2].datatype = PointField::UINT16;
     msg.fields[2].count = 1;
 
     msg.fields[2].name = "column";
     msg.fields[2].offset = 14;
-    msg.fields[2].datatype = sensor_msgs::msg::PointField::UINT16;
+    msg.fields[2].datatype = PointField::UINT16;
     msg.fields[2].count = 1;
 
     msg.fields[3].name = "intensity";
     msg.fields[3].offset = 16;
-    msg.fields[3].datatype = sensor_msgs::msg::PointField::UINT8;
+    msg.fields[3].datatype = PointField::UINT8;
     msg.fields[3].count = 1;
 
-    msg.fields[3].name = "intensity";
+    msg.fields[3].name = "offset";
     msg.fields[3].offset = 17;
-    msg.fields[3].datatype = sensor_msgs::msg::PointField::UINT8;
+    msg.fields[3].datatype = PointField::INT32;
     msg.fields[3].count = 1;
 
-    msg.point_step = 18;
+    msg.point_step = 21;
     msg.row_step = msg.width * msg.point_step;
     const auto& proto_data = proto_msg.data();
     msg.data.assign(proto_data.begin(), proto_data.end());

@@ -25,6 +25,7 @@ set(PROTO_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 # ---------------------------
 file(GLOB_RECURSE PROTO_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/protocol/foxglove/*.proto"
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/protobuf/*.proto"
     "${CMAKE_CURRENT_SOURCE_DIR}/protocol/primitive/sensor/*.proto"
 )
 

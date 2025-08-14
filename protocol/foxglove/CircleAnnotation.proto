@@ -4,14 +4,14 @@ syntax = "proto3";
 
 import "foxglove/Color.proto";
 import "foxglove/Point2.proto";
-import "google/protobuf/timestamp.proto";
+import "protobuf/timestamp.proto";
 
 package foxglove;
 
 // A circle annotation on a 2D image
 message CircleAnnotation {
   // Timestamp of circle
-  google.protobuf.Timestamp timestamp = 1;
+  protobuf.Timestamp timestamp = 1;
 
   // Center of the circle in 2D image coordinates (pixels).
   // The coordinate uses the top-left corner of the top-left pixel of the image as the origin.

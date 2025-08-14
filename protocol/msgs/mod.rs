@@ -12,3 +12,10 @@ pub mod foxglove {
         "/src/protocol/msgs/foxglove.rs"
     ));
 }
+
+pub mod protobuf {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/protocol/msgs/protobuf.rs"
+    ));
+}

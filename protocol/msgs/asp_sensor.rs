@@ -8,7 +8,7 @@
     bitcode::Encode,
     bitcode::Decode
 )]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Time {
     #[prost(int32, tag = "1")]
     pub sec: i32,
@@ -24,7 +24,7 @@ pub struct Time {
     bitcode::Encode,
     bitcode::Decode
 )]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Header {
     #[prost(message, optional, tag = "1")]
     pub stamp: ::core::option::Option<Time>,
@@ -40,7 +40,7 @@ pub struct Header {
     bitcode::Encode,
     bitcode::Decode
 )]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MultiArrayDimension {
     #[prost(string, tag = "1")]
     pub label: ::prost::alloc::string::String,
@@ -180,7 +180,7 @@ pub struct PointCloud {
     bitcode::Encode,
     bitcode::Decode
 )]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PointField {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,

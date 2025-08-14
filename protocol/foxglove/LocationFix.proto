@@ -2,7 +2,7 @@
 
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+import "protobuf/timestamp.proto";
 
 package foxglove;
 
@@ -23,7 +23,7 @@ message LocationFix {
     KNOWN = 3;
   }
   // Timestamp of the message
-  google.protobuf.Timestamp timestamp = 6;
+  protobuf.Timestamp timestamp = 6;
 
   // Frame for the sensor. Latitude and longitude readings are at the origin of the frame.
   string frame_id = 7;
