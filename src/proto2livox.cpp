@@ -74,45 +74,39 @@ public:
 private:
   sensor_msgs::msg::Imu convertToLivoxImu(const asp_sensor::Imu& proto_msg) {
     auto msg = sensor_msgs::msg::Imu();
-    
-    // Convert header
     msg.header.stamp = this->now();
     msg.header.frame_id = "imu_link";
-    
+
     // Convert orientation
-    msg.orientation.x = proto_msg.orientation().x();
-    msg.orientation.y = proto_msg.orientation().y();
-    msg.orientation.z = proto_msg.orientation().z();
-    msg.orientation.w = proto_msg.orientation().w();
-    
+    const auto& ori = proto_msg.orientation();
+    msg.orientation.x = ori.x();
+    msg.orientation.y = ori.y();
+    msg.orientation.z = ori.z();
+    msg.orientation.w = ori.w();
+
     // Convert angular velocity
-    msg.angular_velocity.x = proto_msg.angular().x();
-    msg.angular_velocity.y = proto_msg.angular().y();
-    msg.angular_velocity.z = proto_msg.angular().z();
-    
+    const auto& ang = proto_msg.angular();
+    msg.angular_velocity.x = ang.x();
+    msg.angular_velocity.y = ang.y();
+    msg.angular_velocity.z = ang.z();
+
     // Convert linear acceleration
-    msg.linear_acceleration.x = proto_msg.acceleration().x();
-    msg.linear_acceleration.y = proto_msg.acceleration().y();
-    msg.linear_acceleration.z = proto_msg.acceleration().z();
-    
+    const auto& acc = proto_msg.acceleration();
+    msg.linear_acceleration.x = acc.x();
+    msg.linear_acceleration.y = acc.y();
+    msg.linear_acceleration.z = acc.z();
+
+    // Helper lambda for covariance conversion
+    auto convert_covariance = [](auto& dest, const auto& src) {
+      if (src.size() >= 9) {
+        std::copy_n(src.begin(), 9, dest.begin());
+      }
+    };
+
     // Convert covariance matrices
-    if (proto_msg.orientation_covariance_size() >= 9) {
-      for (int i = 0; i < 9; i++) {
-        msg.orientation_covariance[i] = proto_msg.orientation_covariance(i);
-      }
-    }
-    
-    if (proto_msg.angular_covariance_size() >= 9) {
-      for (int i = 0; i < 9; i++) {
-        msg.angular_velocity_covariance[i] = proto_msg.angular_covariance(i);
-      }
-    }
-    
-    if (proto_msg.acceleration_covariance_size() >= 9) {
-      for (int i = 0; i < 9; i++) {
-        msg.linear_acceleration_covariance[i] = proto_msg.acceleration_covariance(i);
-      }
-    }
+    convert_covariance(msg.orientation_covariance, proto_msg.orientation_covariance());
+    convert_covariance(msg.angular_velocity_covariance, proto_msg.angular_covariance());
+    convert_covariance(msg.linear_acceleration_covariance, proto_msg.acceleration_covariance());
 
     return msg;
   }
@@ -124,50 +118,43 @@ private:
     auto msg = livox_ros_driver::msg::CustomMsg();
     msg.header.stamp = rclcpp::Time(proto_msg.timestamp().seconds(), proto_msg.timestamp().nanos());
     msg.header.frame_id = proto_msg.frame_id();
-    
-    // Parse point cloud data
+
     const auto& fields = proto_msg.fields();
     const auto& data = proto_msg.data();
-    size_t point_count = data.size() / proto_msg.point_stride();
+    const size_t point_count = data.size() / proto_msg.point_stride();
     msg.points.resize(point_count);
 
-    // Find field offsets
-    int x_offset = -1, y_offset = -1, z_offset = -1, intensity_offset = -1;
+    // Create field offset map
+    std::unordered_map<std::string, int> field_offsets;
     for (const auto& field : fields) {
-      if (field.name() == "x") x_offset = field.offset();
-      else if (field.name() == "y") y_offset = field.offset();
-      else if (field.name() == "z") z_offset = field.offset();
-      else if (field.name() == "intensity") intensity_offset = field.offset();
+      field_offsets[field.name()] = field.offset();
     }
 
-    if (x_offset == -1 || y_offset == -1 || z_offset == -1) {
+    // Check required fields
+    if (!field_offsets.count("x") || !field_offsets.count("y") || !field_offsets.count("z")) {
       RCLCPP_ERROR(this->get_logger(), "Missing required fields (x,y,z) in point cloud");
       return msg;
     }
 
-    // Convert each point
+    // Convert points
+    const uint8_t* raw_data = reinterpret_cast<const uint8_t*>(data.data());
+    const bool has_intensity = field_offsets.count("intensity");
+
     for (size_t i = 0; i < point_count; ++i) {
-      const uint8_t* point_data = reinterpret_cast<const uint8_t*>(data.data()) + i * proto_msg.point_stride();
+      const uint8_t* point_data = raw_data + i * proto_msg.point_stride();
       auto& point = msg.points[i];
 
-      point.x = *reinterpret_cast<const float*>(point_data + x_offset);
-      point.y = *reinterpret_cast<const float*>(point_data + y_offset);
-      point.z = *reinterpret_cast<const float*>(point_data + z_offset);
-
-      if (intensity_offset != -1) {
-        point.reflectivity = *reinterpret_cast<const float*>(point_data + intensity_offset);
-      } else {
-        point.reflectivity = 0.0f;
-      }
-
-      point.offset_time = 0;  // TODO: Calculate proper offset time if available
+      point.x = *reinterpret_cast<const float*>(point_data + field_offsets["x"]);
+      point.y = *reinterpret_cast<const float*>(point_data + field_offsets["y"]);
+      point.z = *reinterpret_cast<const float*>(point_data + field_offsets["z"]);
+      point.reflectivity = has_intensity ? 
+        *reinterpret_cast<const float*>(point_data + field_offsets["intensity"]) : 0.0f;
+      point.offset_time = 0;
       point.tag = 0;
       point.line = 0;
     }
 
-    // Apply pose transformation if needed
     if (proto_msg.has_pose()) {
-      // TODO: Implement pose transformation if needed
       RCLCPP_WARN(this->get_logger(), "Pose transformation not yet implemented");
     }
 
@@ -182,44 +169,18 @@ private:
     msg.height = 1;
     msg.width = proto_msg.data().size() / proto_msg.point_stride();
 
-    // Set fields
-    msg.fields.resize(7);
-    msg.fields[0].name = "x";
-    msg.fields[0].offset = 0;
-    msg.fields[0].datatype = PointField::FLOAT32;
-    msg.fields[0].count = 1;
+    // Convert fields from proto to PointCloud2
+    msg.fields.clear();
+    for (const auto& proto_field : proto_msg.fields()) {
+      sensor_msgs::msg::PointField field;
+      field.name = proto_field.name();
+      field.offset = proto_field.offset();
+      field.datatype = proto_field.type();    
+      field.count = 1;
+      msg.fields.push_back(field);
+    }
 
-    msg.fields[1].name = "y";
-    msg.fields[1].offset = 4;
-    msg.fields[1].datatype = PointField::FLOAT32;
-    msg.fields[1].count = 1;
-
-    msg.fields[2].name = "z";
-    msg.fields[2].offset = 8;
-    msg.fields[2].datatype = PointField::FLOAT32;
-    msg.fields[2].count = 1;
-
-    msg.fields[2].name = "ring";
-    msg.fields[2].offset = 12;
-    msg.fields[2].datatype = PointField::UINT16;
-    msg.fields[2].count = 1;
-
-    msg.fields[2].name = "column";
-    msg.fields[2].offset = 14;
-    msg.fields[2].datatype = PointField::UINT16;
-    msg.fields[2].count = 1;
-
-    msg.fields[3].name = "intensity";
-    msg.fields[3].offset = 16;
-    msg.fields[3].datatype = PointField::UINT8;
-    msg.fields[3].count = 1;
-
-    msg.fields[3].name = "offset";
-    msg.fields[3].offset = 17;
-    msg.fields[3].datatype = PointField::INT32;
-    msg.fields[3].count = 1;
-
-    msg.point_step = 21;
+    msg.point_step = proto_msg.point_stride();
     msg.row_step = msg.width * msg.point_step;
     const auto& proto_data = proto_msg.data();
     msg.data.assign(proto_data.begin(), proto_data.end());
