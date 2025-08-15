@@ -74,8 +74,8 @@ public:
 private:
   sensor_msgs::msg::Imu convertToLivoxImu(const asp_sensor::Imu& proto_msg) {
     auto msg = sensor_msgs::msg::Imu();
-    msg.header.stamp = this->now();
-    msg.header.frame_id = "imu_link";
+    msg.header.stamp = rclcpp::Time(proto_msg.header().stamp().sec(), proto_msg.header().stamp().nanosec());
+    msg.header.frame_id = "proto_imu";
 
     // Convert orientation
     const auto& ori = proto_msg.orientation();
