@@ -12,10 +12,10 @@ using namespace std::chrono_literals;
 using sensor_msgs::msg::PointField;
 rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub;
 
-sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &livox_msg)
+sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &livox_msg, std::string topic_name)
 {
     sensor_msgs::msg::PointCloud2 cloud_msg;
-    cloud_msg.header.frame_id = livox_msg.header.frame_id;
+    cloud_msg.header.frame_id = topic_name.empty() ? livox_msg.header.frame_id:topic_name;
     cloud_msg.header.stamp = livox_msg.header.stamp;
     cloud_msg.height = 1;
     cloud_msg.width = livox_msg.points.size();
@@ -120,91 +120,109 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<rclcpp::Node>("livox2pc_node");
 
-    std::string livox_topic = node->declare_parameter<std::string>("livox_topic", "/livox/lidar");
+    std::string livox_lidar_topic = node->declare_parameter<std::string>("livox_lidar_topic", "/livox/lidar");
     std::string rosbag_path = node->declare_parameter<std::string>("rosbag_path", "");
+    std::string livox2pc_lidar_topic = node->declare_parameter<std::string>("livox2pc_lidar_topic", "/livox2pc/lidar");
 
+    // 在线模式：如果没有指定rosbag_path，则订阅在线话题并发布转换后的消息
     if (rosbag_path.empty())
     {
-        RCLCPP_ERROR(node->get_logger(), "rosbag_path parameter is empty!");
-        return -1;
-    }
+        RCLCPP_INFO(node->get_logger(), "Running in online mode, subscribing to topic: %s", livox_lidar_topic.c_str());
+        RCLCPP_INFO(node->get_logger(), "Publishing converted pointcloud to topic: %s", livox2pc_lidar_topic.c_str());
 
-    rosbag2_cpp::Reader reader;
-    try
-    {
-        reader.open(rosbag_path);
-    }
-    catch (const std::exception &e)
-    {
-        RCLCPP_ERROR(node->get_logger(), "loading bag failed: %s", e.what());
-        return -1;
-    }
+        // 创建发布器
+        auto livox2pc_lidar_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>(livox2pc_lidar_topic, 10);
 
-    std::string out_bag_path = rosbag_path.substr(0, rosbag_path.find_last_of(".")) + "_converted";
-    rosbag2_cpp::Writer writer;
-    try
-    {
-        writer.open(out_bag_path);
-    }
-    catch (const std::exception &e)
-    {
-        RCLCPP_ERROR(node->get_logger(), "failed to open output bag: %s", e.what());
-        return -1;
-    }
+        // 创建订阅器回调函数
+        auto livox_lidar_callback = [livox2pc_lidar_pub](const livox_ros_driver::msg::CustomMsg::SharedPtr livox_msg) {
+            auto livox2pc_msg = livox2pc(*livox_msg, "");
+            livox2pc_lidar_pub->publish(livox2pc_msg);
+        };
 
-    // 遍历所有消息
-    size_t count = 0;
-    // Get all topics from input bag and create them in output bag
-    auto topics = reader.get_all_topics_and_types();
-    for (const auto& topic : topics) {
-        try {
-            writer.create_topic(topic);
-        } catch (const std::exception& e) {
-            RCLCPP_WARN(node->get_logger(), "Failed to create topic %s: %s", 
-                       topic.name.c_str(), e.what());
-        }
-    }
+        // 创建订阅器
+        auto livox_lidar_sub = node->create_subscription<livox_ros_driver::msg::CustomMsg>(
+            livox_lidar_topic, 10, livox_lidar_callback);
 
-    // Create our custom pointcloud topic
-    rosbag2_storage::TopicMetadata pointcloud_topic;
-    pointcloud_topic.name = "/livox/pointcloud2";
-    pointcloud_topic.type = "sensor_msgs/msg/PointCloud2";
-    pointcloud_topic.serialization_format = "cdr";
-    writer.create_topic(pointcloud_topic);
-
-    while (reader.has_next())
-    {
-        auto serialized_msg = reader.read_next();
-        count++;
-        
-        // 显示进度（每100条显示一次）
-        if (count % 100 == 0)
+        RCLCPP_INFO(node->get_logger(), "Online conversion started. Press Ctrl+C to exit.");
+        rclcpp::spin(node);
+    } else {
+        rosbag2_cpp::Reader reader;
+        try
         {
-            RCLCPP_INFO(node->get_logger(), "Processing message %zu", count);
+            reader.open(rosbag_path);
+        }
+        catch (const std::exception &e)
+        {
+            RCLCPP_ERROR(node->get_logger(), "loading bag failed: %s", e.what());
+            return -1;
         }
 
-        // 转换点云消息类型
-        if (serialized_msg->topic_name == livox_topic)
+        std::string out_bag_path = rosbag_path.substr(0, rosbag_path.find_last_of(".")) + "_converted";
+        rosbag2_cpp::Writer writer;
+        try
         {
-            auto livox_msg = std::make_shared<livox_ros_driver::msg::CustomMsg>();
-            rclcpp::SerializedMessage extracted_serialized_msg(*serialized_msg->serialized_data);
-            rclcpp::Serialization<livox_ros_driver::msg::CustomMsg> serializer;
-            serializer.deserialize_message(&extracted_serialized_msg, livox_msg.get());
+            writer.open(out_bag_path);
+        }
+        catch (const std::exception &e)
+        {
+            RCLCPP_ERROR(node->get_logger(), "failed to open output bag: %s", e.what());
+            return -1;
+        }
 
-            auto pc2_msg = livox2pc(*livox_msg);
-            auto serialized_pc2 = std::make_shared<rclcpp::SerializedMessage>();
-            rclcpp::Serialization<sensor_msgs::msg::PointCloud2> pc2_serializer;
-            pc2_serializer.serialize_message(&pc2_msg, serialized_pc2.get());
-            writer.write(serialized_pc2, "/livox/pointcloud2", "sensor_msgs/msg/PointCloud2",
-                        rclcpp::Time(serialized_msg->time_stamp));
+        // 遍历所有消息
+        size_t count = 0;
+        // Get all topics from input bag and create them in output bag
+        auto topics = reader.get_all_topics_and_types();
+        for (const auto& topic : topics) {
+            try {
+                writer.create_topic(topic);
+            } catch (const std::exception& e) {
+                RCLCPP_WARN(node->get_logger(), "Failed to create topic %s: %s", 
+                        topic.name.c_str(), e.what());
+            }
         }
-        else
+
+        // Create our custom pointcloud topic
+        rosbag2_storage::TopicMetadata pointcloud_topic;
+        pointcloud_topic.name = "/livox/pointcloud2";
+        pointcloud_topic.type = "sensor_msgs/msg/PointCloud2";
+        pointcloud_topic.serialization_format = "cdr";
+        writer.create_topic(pointcloud_topic);
+
+        while (reader.has_next())
         {
-            writer.write(serialized_msg);
+            auto serialized_msg = reader.read_next();
+            count++;
+            
+            // 显示进度（每100条显示一次）
+            if (count % 100 == 0)
+            {
+                RCLCPP_INFO(node->get_logger(), "Processing message %zu", count);
+            }
+
+            // 转换点云消息类型
+            if (serialized_msg->topic_name == livox_lidar_topic)
+            {
+                auto livox_msg = std::make_shared<livox_ros_driver::msg::CustomMsg>();
+                rclcpp::SerializedMessage extracted_serialized_msg(*serialized_msg->serialized_data);
+                rclcpp::Serialization<livox_ros_driver::msg::CustomMsg> serializer;
+                serializer.deserialize_message(&extracted_serialized_msg, livox_msg.get());
+
+                auto pc2_msg = livox2pc(*livox_msg, "");
+                auto serialized_pc2 = std::make_shared<rclcpp::SerializedMessage>();
+                rclcpp::Serialization<sensor_msgs::msg::PointCloud2> pc2_serializer;
+                pc2_serializer.serialize_message(&pc2_msg, serialized_pc2.get());
+                writer.write(serialized_pc2, "/livox/pointcloud2", "sensor_msgs/msg/PointCloud2",
+                            rclcpp::Time(serialized_msg->time_stamp));
+            }
+            else
+            {
+                writer.write(serialized_msg);
+            }
         }
+
+        RCLCPP_INFO(node->get_logger(), "Finished writing converted bag: %s", out_bag_path.c_str());
     }
-
-    RCLCPP_INFO(node->get_logger(), "Finished writing converted bag: %s", out_bag_path.c_str());
     rclcpp::shutdown();
     return 0;
 }

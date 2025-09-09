@@ -13,7 +13,7 @@ def generate_launch_description():
     
     rosbag_path = DeclareLaunchArgument(
         'rosbag_path',
-        default_value='dataset/Retail_Street.bag',
+        default_value='',
         description='Path to input rosbag file (leave empty to use live data)'
     )
     
