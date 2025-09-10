@@ -12,10 +12,10 @@ using namespace std::chrono_literals;
 using sensor_msgs::msg::PointField;
 rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub;
 
-sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &livox_msg, std::string topic_name)
+sensor_msgs::msg::PointCloud2 livox2pc(const livox_ros_driver::msg::CustomMsg &livox_msg)
 {
     sensor_msgs::msg::PointCloud2 cloud_msg;
-    cloud_msg.header.frame_id = topic_name.empty() ? livox_msg.header.frame_id:topic_name;
+    cloud_msg.header.frame_id = livox_msg.header.frame_id;
     cloud_msg.header.stamp = livox_msg.header.stamp;
     cloud_msg.height = 1;
     cloud_msg.width = livox_msg.points.size();
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 
         // 创建订阅器回调函数
         auto livox_lidar_callback = [livox2pc_lidar_pub](const livox_ros_driver::msg::CustomMsg::SharedPtr livox_msg) {
-            auto livox2pc_msg = livox2pc(*livox_msg, "");
+            auto livox2pc_msg = livox2pc(*livox_msg);
             livox2pc_lidar_pub->publish(livox2pc_msg);
         };
 
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
                 rclcpp::Serialization<livox_ros_driver::msg::CustomMsg> serializer;
                 serializer.deserialize_message(&extracted_serialized_msg, livox_msg.get());
 
-                auto pc2_msg = livox2pc(*livox_msg, "");
+                auto pc2_msg = livox2pc(*livox_msg);
                 auto serialized_pc2 = std::make_shared<rclcpp::SerializedMessage>();
                 rclcpp::Serialization<sensor_msgs::msg::PointCloud2> pc2_serializer;
                 pc2_serializer.serialize_message(&pc2_msg, serialized_pc2.get());
